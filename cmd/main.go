@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
-	"os"
-	"log"
 )
 
 var host string
@@ -85,7 +85,9 @@ func todoAdd(w http.ResponseWriter, r *http.Request) {
 	for key, value := range r.Form {
 		if key == "item" {
 			for _, item := range value {
-				todolist = append(todolist, item)
+				if len(item) > 0 {
+					todolist = append(todolist, item)
+				}
 			}
 		} else {
 			todolist = append(todolist, key)
@@ -141,21 +143,36 @@ func todoGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func todoWebAdd(w http.ResponseWriter, r *http.Request) {
+	io.WriteString(w, fmt.Sprintf(`<html>
+  <form action="http://%s:%d/todo/add">
+    <input type="text" name="item"><br>
+    <input type="text" name="item"><br>
+    <input type="text" name="item"><br>
+    <input type="text" name="item"><br>
+    <input type="text" name="item"><br>
+    <input type="submit" value="Submit"><br>
+  </form>
+</html>
+`, host, port))
+}
+
 func main() {
 	host = os.Getenv("HOST")
-	if  host == "" {
+	if host == "" {
 		log.Fatal("could not read environment variable HOST")
 	}
 	var err error
 	port, err = strconv.Atoi(os.Getenv("PORT"))
-	if err !=nil {
-		log.Fatal(fmt.Sprintf("could not read environment variable PORT: %v",err))
+	if err != nil {
+		log.Fatal(fmt.Sprintf("could not read environment variable PORT: %v", err))
 	}
 
 	http.HandleFunc("/copy", copy)
 	http.HandleFunc("/pastejson", pastejson)
 	http.HandleFunc("/paste", paste)
 	http.HandleFunc("/aliases", aliases)
+	http.HandleFunc("/todo/web/add", todoWebAdd)
 	http.HandleFunc("/todo/add", todoAdd)
 	http.HandleFunc("/todo/get", todoGet)
 	http.HandleFunc("/todo/remove", todoRemove)

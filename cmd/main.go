@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"os"
+	"log"
 )
 
-const port = 1234
-const host = "localhost"
+var host string
+var port int
 
 var copydata string
 var todolist []string
@@ -66,8 +68,8 @@ func aliases(w http.ResponseWriter, r *http.Request) {
 	aliases = append(aliases, fmt.Sprintf("alias ccp='curl %s:%d/copy -d '", host, port))
 	aliases = append(aliases, fmt.Sprintf("alias cpaste='curl %s:%d/paste'", host, port))
 	aliases = append(aliases, fmt.Sprintf("alias todoadd='curl %s:%d/todo/add -d '", host, port))
-	//aliases = append(aliases, fmt.Sprintf("alias todorm='curl %s:%d/todo/remove -d '", host, port))
-	aliases = append(aliases, fmt.Sprintf("alias todoget='curl %s:%d/todo/get'", host, port))
+	aliases = append(aliases, fmt.Sprintf("alias todorm='curl %s:%d/todo/remove -d'", host, port))
+	aliases = append(aliases, fmt.Sprintf("alias todols='curl %s:%d/todo/get'", host, port))
 
 	io.WriteString(w, strings.Join(aliases, "\n"))
 }
@@ -140,6 +142,16 @@ func todoGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	host = os.Getenv("HOST")
+	if  host == "" {
+		log.Fatal("could not read environment variable HOST")
+	}
+	var err error
+	port, err = strconv.Atoi(os.Getenv("PORT"))
+	if err !=nil {
+		log.Fatal(fmt.Sprintf("could not read environment variable PORT: %v",err))
+	}
+
 	http.HandleFunc("/copy", copy)
 	http.HandleFunc("/pastejson", pastejson)
 	http.HandleFunc("/paste", paste)

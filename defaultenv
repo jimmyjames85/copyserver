@@ -1,2 +1,2 @@
-HOST=localhost
-PORT=12345
+export HOST=localhost
+export PORT=12345

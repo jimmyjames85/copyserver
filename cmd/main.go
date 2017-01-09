@@ -1,31 +1,22 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
-	"os"
-	"strconv"
+	"io"
+	"encoding/json"
 	"strings"
-	"io/ioutil"
+	"os"
+	"log"
+	"strconv"
+	"github.com/jimmyjames85/copyserver"
 )
+
 
 var host string
 var port int
 
 var copydata string
-var todolist []string
-
-func toJSON(obj interface{}) string {
-	b, err := json.Marshal(obj)
-	if err != nil {
-		fmt.Printf("failed to marshal data: %s", err)
-		return fmt.Sprintf("%v", obj)
-	}
-	return string(b)
-}
 
 func copy(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
@@ -84,75 +75,6 @@ func aliases(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, strings.Join(aliases, "\n"))
 }
 
-func todoAdd(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
-	if err != nil {
-		io.WriteString(w, fmt.Sprintf("failed to parse form data: %s", err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	for key, value := range r.Form {
-		if key == "item" {
-			for _, item := range value {
-				if len(item) > 0 {
-					todolist = append(todolist, item)
-				}
-			}
-		} else {
-			todolist = append(todolist, key)
-		}
-	}
-}
-
-func todoRemove(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
-	if err != nil {
-		io.WriteString(w, fmt.Sprintf("failed to parse form data: %s", err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	for key, value := range r.Form {
-
-		var items []string
-
-		if key == "item" {
-			items = value
-		} else {
-			items = append(items, key)
-		}
-
-		if len(items) > 1 {
-			io.WriteString(w, "I can only remove one item at a time\n")
-		}
-
-		if len(items) >= 1 {
-			inum, err := strconv.Atoi(items[0])
-			if err != nil {
-				io.WriteString(w, fmt.Sprintf("Unable to parse item number: %s\n", items[0]))
-			} else if inum < 0 || inum >= len(todolist) {
-				io.WriteString(w, fmt.Sprintf("item number out of range: %d\n", inum))
-			} else {
-				removedItem := todolist[inum]
-				todolist = append(todolist[:inum], todolist[inum+1:]...)
-				io.WriteString(w, fmt.Sprintf("removed item: %s\n", removedItem))
-			}
-		}
-
-	}
-
-}
-func todoGet(w http.ResponseWriter, r *http.Request) {
-	if todolist == nil {
-		return
-	}
-
-	for i, item := range todolist {
-		io.WriteString(w, fmt.Sprintf("%d: %s\n", i, item))
-	}
-}
-
 func todoWebAdd(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, fmt.Sprintf(`<html>
   <form action="http://%s:%d/todo/add">
@@ -166,35 +88,35 @@ func todoWebAdd(w http.ResponseWriter, r *http.Request) {
 </html>
 `, host, port))
 }
-
-func todoSaveToDisk(w http.ResponseWriter, r *http.Request) {
-	s := toJSON(todolist)
-	fmt.Printf("saving: %s\n", s)
-	writeToDiskAndIgnoreErr(s, "/tmp/copyserver.data")
-}
-func todoLoadToDisk(w http.ResponseWriter, r *http.Request) {
-	s := loadFromDisk("/tmp/copyserver.data")
-	io.WriteString(w, s)
-}
-
-func loadFromDisk(fileloc string) string{
-	b, err := ioutil.ReadFile(fileloc)
-	if err!=nil {
-		return ""
-	}
-	return string(b)
-}
-
-func writeToDiskAndIgnoreErr(data string, fileloc string) {
-	d := []byte(data)
-	err := ioutil.WriteFile(fileloc, d, 0644)
-	if err != nil {
-		fmt.Printf("err writint to file %s: %s\n", fileloc, err)
-	}
-}
-func handleLoadSavedData(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, loadFromDisk("/tmp/copyserver.data"))
-}
+//
+//func todoSaveToDisk(w http.ResponseWriter, r *http.Request) {
+//	s := toJSON(todolist)
+//	fmt.Printf("saving: %s\n", s)
+//	writeToDiskAndIgnoreErr(s, "/tmp/copyserver.data")
+//}
+//func todoLoadToDisk(w http.ResponseWriter, r *http.Request) {
+//	s := loadFromDisk("/tmp/copyserver.data")
+//	io.WriteString(w, s)
+//}
+//
+//func loadFromDisk(fileloc string) string{
+//	b, err := ioutil.ReadFile(fileloc)
+//	if err!=nil {
+//		return ""
+//	}
+//	return string(b)
+//}
+//
+//func writeToDiskAndIgnoreErr(data string, fileloc string) {
+//	d := []byte(data)
+//	err := ioutil.WriteFile(fileloc, d, 0644)
+//	if err != nil {
+//		fmt.Printf("err writint to file %s: %s\n", fileloc, err)
+//	}
+//}
+//func handleLoadSavedData(w http.ResponseWriter, r *http.Request) {
+//	io.WriteString(w, loadFromDisk("/tmp/copyserver.data"))
+//}
 
 func main() {
 	host = os.Getenv("HOST")
@@ -211,11 +133,18 @@ func main() {
 	http.HandleFunc("/pastejson", pastejson)
 	http.HandleFunc("/paste", paste)
 	http.HandleFunc("/aliases", aliases)
+
 	http.HandleFunc("/todo/web/add", todoWebAdd)
-	http.HandleFunc("/todo/add", todoAdd)
-	http.HandleFunc("/todo/get", todoGet)
-	http.HandleFunc("/todo/remove", todoRemove)
-	http.HandleFunc("/todo/save", todoSaveToDisk)
-	http.HandleFunc("/todo/load", todoLoadToDisk)
+
+	http.HandleFunc("/todo/add", copyserver.HandleListAdd)
+	http.HandleFunc("/todo/get", copyserver.HandleListGet)
+	http.HandleFunc("/todo/getjson", copyserver.HandleListGetJSON)
+	http.HandleFunc("/todo/remove", copyserver.HandleListRemove)
+	http.HandleFunc("/todo/setindex", copyserver.HandleListSetIndex)
+
+	//http.HandleFunc("/todo/save", todoSaveToDisk)
+	//http.HandleFunc("/todo/load", todoLoadToDisk)
+
 	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+
 }

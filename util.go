@@ -10,7 +10,7 @@ func logf(format string, a ... interface{}) {
 	fmt.Printf("%s: %s\n", time.Now().String(), fmt.Sprintf(format, a...))
 }
 
-func toJSON(obj interface{}) string {
+func ToJSON(obj interface{}) string {
 	b, err := json.Marshal(obj)
 	if err != nil {
 		fmt.Printf("failed to marshal data: %s", err)

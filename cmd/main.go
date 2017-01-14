@@ -12,7 +12,6 @@ import (
 	"github.com/jimmyjames85/copyserver"
 )
 
-
 var host string
 var port int
 
@@ -75,76 +74,43 @@ func aliases(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, strings.Join(aliases, "\n"))
 }
 
-func todoWebAdd(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, fmt.Sprintf(`<html>
-  <form action="http://%s:%d/todo/add">
-    <input type="text" name="item"><br>
-    <input type="text" name="item"><br>
-    <input type="text" name="item"><br>
-    <input type="text" name="item"><br>
-    <input type="text" name="item"><br>
-    <input type="submit" value="Submit"><br>
-  </form>
-</html>
-`, host, port))
+func todoWebGetAll(w http.ResponseWriter, r *http.Request) {
+
 }
-//
-//func todoSaveToDisk(w http.ResponseWriter, r *http.Request) {
-//	s := toJSON(todolist)
-//	fmt.Printf("saving: %s\n", s)
-//	writeToDiskAndIgnoreErr(s, "/tmp/copyserver.data")
-//}
-//func todoLoadToDisk(w http.ResponseWriter, r *http.Request) {
-//	s := loadFromDisk("/tmp/copyserver.data")
-//	io.WriteString(w, s)
-//}
-//
-//func loadFromDisk(fileloc string) string{
-//	b, err := ioutil.ReadFile(fileloc)
-//	if err!=nil {
-//		return ""
-//	}
-//	return string(b)
-//}
-//
-//func writeToDiskAndIgnoreErr(data string, fileloc string) {
-//	d := []byte(data)
-//	err := ioutil.WriteFile(fileloc, d, 0644)
-//	if err != nil {
-//		fmt.Printf("err writint to file %s: %s\n", fileloc, err)
-//	}
-//}
-//func handleLoadSavedData(w http.ResponseWriter, r *http.Request) {
-//	io.WriteString(w, loadFromDisk("/tmp/copyserver.data"))
-//}
+
+func todoWebGet(w http.ResponseWriter, r *http.Request) {
+
+}
+
 
 func main() {
 	host = os.Getenv("HOST")
-	if host == "" {
-		log.Fatal("could not read environment variable HOST")
+	if len(host) == 0 {
+		log.Fatalf("could not read environment variable HOST\n")
 	}
+
 	var err error
 	port, err = strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {
-		log.Fatal(fmt.Sprintf("could not read environment variable PORT: %v", err))
+		log.Fatalf("could not read environment variable PORT: %v\n", err)
 	}
 
-	http.HandleFunc("/copy", copy)
-	http.HandleFunc("/pastejson", pastejson)
-	http.HandleFunc("/paste", paste)
-	http.HandleFunc("/aliases", aliases)
+	apikey := os.Getenv("APIKEY")
+	if len(apikey) == 0 {
+		log.Fatalf("could not read environment variable APIKEY\n")
+	}
 
-	http.HandleFunc("/todo/web/add", todoWebAdd)
+	savefile := os.Getenv("SAVEFILE")
+	if len(savefile) == 0 {
+		log.Fatalf("could not read environment variable SAVEFILE\n")
+	}
 
-	http.HandleFunc("/todo/add", copyserver.HandleListAdd)
-	http.HandleFunc("/todo/get", copyserver.HandleListGet)
-	http.HandleFunc("/todo/getjson", copyserver.HandleListGetJSON)
-	http.HandleFunc("/todo/remove", copyserver.HandleListRemove)
-	http.HandleFunc("/todo/setindex", copyserver.HandleListSetIndex)
+	copyserver := copyserver.NewCopyserver(port,host,apikey,savefile)
+	copyserver.Serve()
 
-	//http.HandleFunc("/todo/save", todoSaveToDisk)
-	//http.HandleFunc("/todo/load", todoLoadToDisk)
-
-	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	//http.HandleFunc("/copy", copy)
+	//http.HandleFunc("/pastejson", pastejson)
+	//http.HandleFunc("/paste", paste)
+	//http.HandleFunc("/aliases", aliases)
 
 }
